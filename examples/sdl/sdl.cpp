@@ -1,8 +1,15 @@
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#endif
+
 #include <stdio.h>
 #include <tmx.h>
 #include <SDL.h>
 #include <SDL_events.h>
 #include <SDL_image.h>
+
+#include <iostream>
 
 #define DISPLAY_H 600
 #define DISPLAY_W 800
@@ -152,6 +159,29 @@ Uint32 timer_func(Uint32 interval, void *param) {
 	return(interval);
 }
 
+int game_running = 1;
+tmx_map *map = NULL;
+
+void render_frame()
+{
+    SDL_Event ev;
+
+    while (SDL_PollEvent(&ev))
+    {
+        switch (ev.type)
+        {
+            case SDL_QUIT:
+                game_running = 0;
+                break;
+            default:
+                break;
+        }
+    };
+
+    render_map(map);
+    SDL_RenderPresent(ren);
+}
+
 int main(int argc, char **argv) {
 	SDL_Window *win;
 	SDL_Event ev;
@@ -181,18 +211,19 @@ int main(int argc, char **argv) {
 	tmx_img_load_func = SDL_tex_loader;
 	tmx_img_free_func = (void (*)(void*))SDL_DestroyTexture;
 
-	tmx_map *map = tmx_load(argv[1]);
+	map = tmx_load("data/objecttemplates.tmx");
 	if (!map) {
 		tmx_perror("Cannot load map");
 		return 1;
 	}
 
-	while (SDL_WaitEvent(&ev)) {
+#ifdef __EMSCRIPTEN__
+    std::cout << "set_main_loop\n";
 
-		if (ev.type == SDL_QUIT) break;
-
-		render_map(map);
-		SDL_RenderPresent(ren);
+    emscripten_set_main_loop(&render_frame, 0, 0);
+#else
+    while (game_running) {
+        render_frame();
 	}
 
 	tmx_map_free(map);
@@ -201,6 +232,8 @@ int main(int argc, char **argv) {
 	SDL_DestroyRenderer(ren);
 	SDL_DestroyWindow(win);
 	SDL_Quit();
+
+#endif
 
 	return 0;
 }

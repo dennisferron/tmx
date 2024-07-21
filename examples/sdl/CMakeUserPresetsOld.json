@@ -1,0 +1,76 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "toolchain-mingw",
+      "hidden": true,
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "MinGW"
+        }
+      },
+      "generator": "Ninja"
+    },
+    {
+      "name": "release-mingw",
+      "binaryDir": "${sourceDir}/cmake-build-release",
+      "installDir": "../../../Common/cmake-install-release",
+      "inherits": ["toolchain-mingw"],
+      "cacheVariables": {
+      }
+    },
+    {
+      "name": "debug-mingw",
+      "binaryDir": "${sourceDir}/cmake-build-debug",
+      "installDir": "../../../Common/cmake-install-debug",
+      "inherits": ["toolchain-mingw"],
+      "cacheVariables": {
+      }
+    },
+    {
+      "name": "toolchain-emscripten",
+      "hidden": true,
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "Emscripten"
+        }
+      },
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "C:\\Users\\dferr\\emsdk\\upstream\\emscripten\\cmake\\Modules\\Platform\\Emscripten.cmake"
+      }
+    },
+    {
+      "name": "release-emscripten",
+      "binaryDir": "${sourceDir}/cmake-build-release-emscripten",
+      "installDir": "../../../Common/cmake-install-release-emscripten",
+      "inherits": ["toolchain-emscripten"],
+      "cacheVariables": {
+      }
+    }
+  ],
+    "buildPresets": [
+      {
+        "name": "build-debug-mingw",
+        "displayName": "Debug - MinGW",
+        "description": "Debug build for MinGW",
+        "configurePreset": "debug-mingw",
+        "configuration": "Debug"
+      },
+        {
+            "name": "build-release-mingw",
+            "displayName": "Release - MinGW",
+            "description": "Release build for MinGW",
+            "configurePreset": "release-mingw",
+            "configuration": "Release"
+        },
+      {
+        "name": "build-release-emscripten",
+        "displayName": "Release - Emscripten",
+        "description": "Release build with Emscripten",
+        "configurePreset": "release-emscripten",
+        "configuration": "Release"
+      }
+    ]
+  
+}
