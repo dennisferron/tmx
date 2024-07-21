@@ -2,6 +2,7 @@
 	Node allocation
 */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <libxml/xmlmemory.h>
@@ -70,9 +71,11 @@ tmx_object_group* alloc_objgr(void) {
 tmx_layer* alloc_layer(void) {
 	tmx_layer *res = (tmx_layer*)node_alloc(sizeof(tmx_layer));
 	if (res) {
-		res->opacity = 1.0f;
+		res->opacity = 1.0;
 		res->visible = 1;
 		res->tintcolor = 0xFFFFFFFF;
+		res->parallaxx = 1.0;
+		res->parallaxy = 1.0;
 	}
 	return res;
 }
@@ -127,6 +130,9 @@ void free_property(tmx_property *p) {
 		if (p->type == PT_STRING || p->type == PT_FILE || p->type == PT_NONE) {
 			tmx_free_func(p->value.string);
 		}
+		else if (p->type == PT_CUSTOM) {
+			free_props(p->value.properties);
+		}
 		tmx_free_func(p);
 	}
 }
@@ -164,7 +170,7 @@ void free_obj(tmx_object *o) {
 	}
 }
 
-void free_objgr(tmx_object_group *o) {
+void free_objgr(tmx_object_group* o) {
 	if (o) {
 		free_obj(o->head);
 		tmx_free_func(o);
@@ -185,6 +191,7 @@ void free_layers(tmx_layer *l) {
 	if (l) {
 		free_layers(l->next);
 		tmx_free_func(l->name);
+		if (l->class_type) tmx_free_func(l->class_type);
 		if (l->type == L_LAYER) {
 			tmx_free_func(l->content.gids);
 		}
@@ -222,6 +229,7 @@ void free_ts(tmx_tileset *ts) {
 		free_props(ts->properties);
 		free_tiles(ts->tiles, ts->tilecount);
 		tmx_free_func(ts->tiles);
+		if (ts->class_type) tmx_free_func(ts->class_type);
 		tmx_free_func(ts);
 	}
 }

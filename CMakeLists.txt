@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(tmx VERSION 1.4.0 LANGUAGES C)
+project(tmx VERSION 1.10.0 LANGUAGES C)
 
 add_subdirectory(doc) # Sphinx documentation
 
@@ -62,7 +62,7 @@ else()
     message("zstd not wanted")
 endif()
 
-find_package(LibXml2 REQUIRED CONFIG)
+find_package(LibXml2 REQUIRED)
 target_link_libraries(tmx LibXml2::LibXml2)
 
 # -- Build

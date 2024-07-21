@@ -35,7 +35,7 @@ Load maps
 External resources
 ------------------
 
-libTMX has a resource manager to store tilesets and object templates to avoid loading them twice or more.  
+libTMX has a resource manager to store tilesets and object templates to avoid loading them twice or more.
 
 .. c:type:: tmx_resource_manager
 
@@ -110,6 +110,24 @@ Maps
    Load a TMX map using a callback function as defined above. `userdata` is passed as-is.
    See :c:type:`tmx_read_functor`.
 
+Variants with virtual paths
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In case you're working with a virtual file system, you may use these variants accepting a virtual path:
+
+.. c:function:: tmx_map* tmx_rcmgr_load_buffer_vpath(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char *vpath)
+
+   Load a TMX map from the given buffer whose length is len, with a given virtual path.
+
+.. c:function:: tmx_map* tmx_rcmgr_load_fd_vpath(tmx_resource_manager *rc_mgr, int fd, const char *vpath)
+
+   Load a TMX map from a C file descriptor, with a given virtual path.
+
+.. c:function:: tmx_map* tmx_rcmgr_load_callback_vpath(tmx_resource_manager *rc_mgr, tmx_read_functor callback, const char *vpath, void *userdata)
+
+   Load a TMX map using a callback function as defined above. `userdata` is passed as-is, with a given virtual path.
+   See :c:type:`tmx_read_functor`.
+
 Utilities
 ---------
 
@@ -125,6 +143,14 @@ Utilities
 .. c:function:: tmx_layer* tmx_find_layer_by_name(const tmx_map *map, const char *name)
 
    Get a layer by its name (user defined string, use with care, may not be unique), see :c:member:`tmx_layer.name`.
+
+.. c:function:: tmx_object* tmx_find_object_by_id(const tmx_map *map, unsigned int id)
+
+   Get an object by its ID, see :c:member:`tmx_object.id`.
+
+.. c:function:: tmx_tileset_list* tmx_find_tileset_by_name(const tmx_map* map, const char* name)
+
+   Get a tileset by its name (user defined string, use with care, may not be unique), see :c:member:`tmx_tileset.name`.
 
 .. c:function:: tmx_property* tmx_get_property(tmx_properties *hash, const char *key)
 

@@ -205,7 +205,7 @@ cleanup:
 
 #else
 
-char* zlib_decompress(const char *source, unsigned int slength, unsigned int rlength) {
+char* zlib_decompress(UNUSED const char *source, UNUSED unsigned int slength, UNUSED unsigned int rlength) {
 	tmx_err(E_FONCT, "This library was not built with the zlib/gzip support");
 	return NULL;
 }
@@ -250,7 +250,7 @@ cleanup:
 
 #else
 
-char* zstd_decompress(const char *source, unsigned int slength, unsigned int rlength) {
+char* zstd_decompress(UNUSED const char *source, UNUSED unsigned int slength, UNUSED unsigned int rlength) {
 	tmx_err(E_FONCT, "This library was not built with zstd support");
 	return NULL;
 }
@@ -346,6 +346,8 @@ int set_tiles_runtime_props(tmx_tileset *ts) {
 
 		ts->tiles[i].ul_x = ts->margin + (tx * ts->tile_width)  + (tx * ts->spacing);
 		ts->tiles[i].ul_y = ts->margin + (ty * ts->tile_height) + (ty * ts->spacing);
+		ts->tiles[i].width = ts->tile_width;
+		ts->tiles[i].height = ts->tile_height;
 	}
 
 	return 1;
@@ -468,6 +470,28 @@ enum tmx_obj_alignment parse_obj_alignment(const char *objalign_str) {
 	return OA_NONE;
 }
 
+/* "stretch" -> FM_STRETCH */
+enum tmx_fill_mode parse_fillmode(const char *fillmode) {
+	if (!strcmp(fillmode, "stretch")) {
+		return FM_STRETCH;
+	}
+	if (!strcmp(fillmode, "preserve-aspect-fit")) {
+		return FM_PRESERVE_ASPECT_FIT;
+	}
+	return FM_NONE;
+}
+
+/* "tile" -> TRS_TILE */
+enum tmx_tile_render_size parse_tile_render_size(const char *tile_render_size) {
+	if (!strcmp(tile_render_size, "tile")) {
+		return TRS_TILE;
+	}
+	if (!strcmp(tile_render_size, "grid")) {
+		return TRS_GRID;
+	}
+	return TRS_NONE;
+}
+
 /* "index" -> G_INDEX */
 enum tmx_objgr_draworder parse_objgr_draworder(const char *draworder) {
 	if (draworder == NULL || !strcmp(draworder, "topdown")) {
@@ -521,6 +545,12 @@ enum tmx_property_type parse_property_type(const char *propertytype) {
 	if (!strcmp(propertytype, "file")) {
 		return PT_FILE;
 	}
+	if (!strcmp(propertytype, "object")) {
+		return PT_OBJECT;
+	}
+	if (!strcmp(propertytype, "class")) {
+		return PT_CUSTOM;
+	}
 	return PT_NONE;
 }
 
@@ -536,6 +566,9 @@ enum tmx_horizontal_align parse_horizontal_align(const char *horalign) {
 	}
 	if (!strcmp(horalign, "right")) {
 		return HA_RIGHT;
+	}
+	if (!strcmp(horalign, "justify")) {
+		return HA_JUSTIFY;
 	}
 	return HA_NONE;
 }

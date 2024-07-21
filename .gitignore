@@ -21,4 +21,15 @@ build*/
 cmake-build*/
 
 # ide
+/.idea
 .idea/
+/.vscode
+
+# temp files
+*.tiled-session
+
+# cmake
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+CMakeFiles/

@@ -54,9 +54,11 @@ enum tmx_obj_alignment {OA_NONE, OA_TOP, OA_LEFT, OA_BOTTOM, OA_RIGHT, OA_CENTER
 enum tmx_layer_type {L_NONE, L_LAYER, L_OBJGR, L_IMAGE, L_GROUP};
 enum tmx_objgr_draworder {G_NONE, G_INDEX, G_TOPDOWN};
 enum tmx_obj_type {OT_NONE, OT_SQUARE, OT_POLYGON, OT_POLYLINE, OT_ELLIPSE, OT_TILE, OT_TEXT, OT_POINT};
-enum tmx_property_type {PT_NONE, PT_INT, PT_FLOAT, PT_BOOL, PT_STRING, PT_COLOR, PT_FILE};
-enum tmx_horizontal_align {HA_NONE, HA_LEFT, HA_CENTER, HA_RIGHT};
+enum tmx_property_type {PT_NONE, PT_INT, PT_FLOAT, PT_BOOL, PT_STRING, PT_COLOR, PT_FILE, PT_OBJECT, PT_CUSTOM};
+enum tmx_horizontal_align {HA_NONE, HA_LEFT, HA_CENTER, HA_RIGHT, HA_JUSTIFY};
 enum tmx_vertical_align {VA_NONE, VA_TOP, VA_CENTER, VA_BOTTOM};
+enum tmx_tile_render_size {TRS_NONE, TRS_TILE, TRS_GRID};
+enum tmx_fill_mode {FM_NONE, FM_STRETCH, FM_PRESERVE_ASPECT_FIT};
 
 /* Typedefs of the structures below */
 typedef struct _tmx_prop tmx_property;
@@ -81,14 +83,16 @@ typedef union {
 } tmx_user_data;
 
 typedef union {
-	int integer, boolean; /* type = int or bool */
+	int integer, boolean, object_id; /* type = int or bool or object */
 	float decimal; /* type = float */
 	char *string, *file; /* default and type = string or file */
 	uint32_t color; /* type = color, bytes : ARGB */
+	tmx_properties *properties; /* type = custom */
 } tmx_property_value;
 
 struct _tmx_prop { /* <properties> and <property> */
 	char *name;
+	char *propertytype; /* for custom classes and enums */
 	enum tmx_property_type type;
 	tmx_property_value value;
 };
@@ -111,7 +115,11 @@ struct _tmx_frame { /* <frame> */
 struct _tmx_tile { /* <tile> */
 	unsigned int id;
 	tmx_tileset *tileset;
+
+	/* for an image-based tileset, the four values below represent the rectangle inside the tileset image */
+	/* for an collection-of-images-based tileset, the four values below represent the rectangle inside the image for the tile*/
 	unsigned int ul_x, ul_y; /* upper-left coordinate of this tile */
+	unsigned int width, height; /* the width and height of this tile inside the source image */
 
 	tmx_image *image;
 	tmx_object *collision;
@@ -127,6 +135,7 @@ struct _tmx_tile { /* <tile> */
 
 struct _tmx_ts { /* <tileset> and <tileoffset> */
 	char *name;
+	char *class_type;
 
 	unsigned int tile_width, tile_height;
 	unsigned int spacing, margin;
@@ -135,6 +144,9 @@ struct _tmx_ts { /* <tileset> and <tileoffset> */
 
 	unsigned int tilecount;
 	tmx_image *image;
+
+	enum tmx_tile_render_size tile_render_size;
+	enum tmx_fill_mode fill_mode;
 
 	tmx_user_data user_data;
 	tmx_properties *properties;
@@ -209,11 +221,13 @@ struct _tmx_templ { /* <template> */
 struct _tmx_layer { /* <layer> or <imagelayer> or <objectgroup> */
 	int id;
 	char *name;
+	char *class_type;
 	double opacity;
 	int visible; /* 0 == false */
 	int offsetx, offsety;
 	double parallaxx, parallaxy;
 	uint32_t tintcolor; /* bytes : ARGB */
+	int repeatx, repeaty; /* only of image layers */
 
 	enum tmx_layer_type type;
 	union layer_content {
@@ -229,6 +243,9 @@ struct _tmx_layer { /* <layer> or <imagelayer> or <objectgroup> */
 };
 
 struct _tmx_map { /* <map> (Head of the data structure) */
+	char *format_version;
+	char *class_type;
+
 	enum tmx_map_orient orient;
 
 	unsigned int width, height;
@@ -237,6 +254,8 @@ struct _tmx_map { /* <map> (Head of the data structure) */
 	enum tmx_stagger_index stagger_index;
 	enum tmx_stagger_axis stagger_axis;
 	int hexsidelength;
+
+	double parallaxoriginx, parallaxoriginy;
 
 	uint32_t backgroundcolor; /* bytes : ARGB */
 	enum tmx_map_renderorder renderorder;
@@ -290,6 +309,12 @@ TMXEXPORT tmx_layer* tmx_find_layer_by_id(const tmx_map *map, int id);
 
 /* Finds a layer by its name (user-defined string), returns NULL if not found or an error occurred */
 TMXEXPORT tmx_layer* tmx_find_layer_by_name(const tmx_map *map, const char *name);
+
+/* Finds an object by its id, returns NULL if not found or an error occurred */
+TMXEXPORT tmx_object* tmx_find_object_by_id(const tmx_map *map, unsigned int id);
+
+/* Finds a tileset by its name (user-defined string), returns NULL if not found or an error occurred */
+TMXEXPORT tmx_tileset_list* tmx_find_tileset_by_name(const tmx_map* map, const char* name);
 
 /* Returns the tmx_property from given hashtable and key, returns NULL if not found */
 TMXEXPORT tmx_property* tmx_get_property(tmx_properties *hash, const char *key);
@@ -387,6 +412,23 @@ TMXEXPORT tmx_map* tmx_rcmgr_load_fd(tmx_resource_manager *rc_mgr, int fd);
 
 /* Same as tmx_load_callback (tmx.h) but with a Resource Manager. */
 TMXEXPORT tmx_map* tmx_rcmgr_load_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata);
+
+/*
+	Load map with virtual paths
+*/
+
+/* Loads a map from buffer, and returns the head of the data structure
+   returns NULL if an error occurred and set tmx_errno */
+TMXEXPORT tmx_map* tmx_rcmgr_load_buffer_vpath(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char* vpath);
+
+/* Loads a map from a file descriptor and returns the head of the data structure
+   The file descriptor will not be closed
+   returns NULL if an error occurred and set tmx_errno */
+TMXEXPORT tmx_map* tmx_rcmgr_load_fd_vpath(tmx_resource_manager *rc_mgr, int fd, const char* vpath);
+
+/* Loads a map using the given read callback and returns the head of the data structure
+   returns NULL if an error occurred and set tmx_errno */
+TMXEXPORT tmx_map* tmx_rcmgr_load_callback_vpath(tmx_resource_manager *rc_mgr, tmx_read_functor callback, const char* vpath, void *userdata);
 
 /*
 	Error handling

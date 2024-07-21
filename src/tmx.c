@@ -55,6 +55,8 @@ void tmx_map_free(tmx_map *map) {
 		free_props(map->properties);
 		free_layers(map->ly_head);
 		tmx_free_func(map->tiles);
+		if (map->format_version) tmx_free_func(map->format_version);
+		if (map->class_type) tmx_free_func(map->class_type);
 		tmx_free_func(map);
 	}
 }
@@ -118,6 +120,57 @@ tmx_layer* tmx_find_layer_by_name(tmx_map const *map, const char *name) {
 	}
 
 	return _tmx_find_layer_by_name(map->ly_head, name);
+}
+
+static tmx_object* __tmx_find_object_by_id(tmx_object *og_head, unsigned int id) {
+	do {
+		if (og_head == NULL) return NULL;
+		if (og_head->id == id) return og_head;
+		og_head = og_head->next;
+	} while (1);
+}
+
+static tmx_object* _tmx_find_object_by_id(tmx_layer *ly_head, unsigned int id) {
+	tmx_object *res;
+	do {
+		if (ly_head == NULL) return NULL;
+		if (ly_head->type == L_GROUP) {
+			res = _tmx_find_object_by_id(ly_head->content.group_head, id);
+			if (res != NULL) return res;
+		}
+		if (ly_head->type == L_OBJGR) {
+			res = __tmx_find_object_by_id(ly_head->content.objgr->head, id);
+			if (res != NULL) return res;
+		}
+		ly_head = ly_head->next;
+	} while (1);
+}
+
+tmx_object* tmx_find_object_by_id(tmx_map const *map, unsigned int id) {
+	if (!map) {
+		tmx_err(E_INVAL, "tmx_find_object_by_id: invalid argument: map is NULL");
+		return NULL;
+	}
+
+	return _tmx_find_object_by_id(map->ly_head, id);
+}
+
+tmx_tileset_list* tmx_find_tileset_by_name(const tmx_map* map, const char* name) {
+	tmx_tileset_list* res;
+
+	if (!map) {
+		tmx_err(E_INVAL, "tmx_find_tileset_by_name: invalid argument: map is NULL");
+		return NULL;
+	}
+	if (!name) {
+		tmx_err(E_INVAL, "tmx_find_tileset_by_name: invalid argument: name is NULL");
+		return NULL;
+	}
+
+	for (res = map->ts_head; res; res = res->next) {
+		if (res->tileset && !strcmp(res->tileset->name, name)) return res;
+	}
+	return NULL;
 }
 
 tmx_property* tmx_get_property(tmx_properties *hash, const char *key) {
@@ -201,25 +254,37 @@ tmx_map* tmx_rcmgr_load(tmx_resource_manager *rc_mgr, const char *path) {
 }
 
 tmx_map* tmx_rcmgr_load_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len) {
-	tmx_map *map = NULL;
-	set_alloc_functions();
-	map = parse_xml_buffer(rc_mgr, buffer, len);
-	map_post_parsing(&map);
-	return map;
+	return tmx_rcmgr_load_buffer_vpath(rc_mgr, buffer, len, NULL);
 }
 
 tmx_map* tmx_rcmgr_load_fd(tmx_resource_manager *rc_mgr, int fd) {
+	return tmx_rcmgr_load_fd_vpath(rc_mgr, fd, NULL);
+}
+
+tmx_map* tmx_rcmgr_load_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata) {
+	return tmx_rcmgr_load_callback_vpath(rc_mgr, callback, NULL, userdata);
+}
+
+tmx_map* tmx_rcmgr_load_buffer_vpath(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char *vpath) {
 	tmx_map *map = NULL;
 	set_alloc_functions();
-	map = parse_xml_fd(rc_mgr, fd);
+	map = parse_xml_buffer_vpath(rc_mgr, buffer, len, vpath);
 	map_post_parsing(&map);
 	return map;
 }
 
-tmx_map* tmx_rcmgr_load_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata) {
+tmx_map* tmx_rcmgr_load_fd_vpath(tmx_resource_manager *rc_mgr, int fd, const char *vpath) {
 	tmx_map *map = NULL;
 	set_alloc_functions();
-	map = parse_xml_callback(rc_mgr, callback, userdata);
+	map = parse_xml_fd_vpath(rc_mgr, fd, vpath);
+	map_post_parsing(&map);
+	return map;
+}
+
+tmx_map* tmx_rcmgr_load_callback_vpath(tmx_resource_manager *rc_mgr, tmx_read_functor callback, const char *vpath, void *userdata) {
+	tmx_map *map = NULL;
+	set_alloc_functions();
+	map = parse_xml_callback_vpath(rc_mgr, callback, vpath, userdata);
 	map_post_parsing(&map);
 	return map;
 }
